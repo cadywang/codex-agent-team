@@ -146,6 +146,7 @@ try {
       has_issues         = [bool]$settings.has_issues
       has_projects       = [bool]$settings.has_projects
       has_wiki           = [bool]$settings.has_wiki
+      has_discussions    = [bool]$settings.has_discussions
       auto_init          = $false
       allow_squash_merge = [bool]$settings.allow_squash_merge
       allow_merge_commit = [bool]$settings.allow_merge_commit
