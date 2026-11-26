@@ -1,0 +1,19 @@
+{
+  "name": "codex-agent-team",
+  "description": "A multi-agent team on top of the Codex CLI: research, coding, review, debug, test and flash roles with explicit sandboxes, gates and evidence.",
+  "homepage": "",
+  "private": false,
+  "has_issues": true,
+  "has_projects": false,
+  "has_wiki": false,
+  "has_discussions": true,
+  "allow_squash_merge": false,
+  "allow_merge_commit": false,
+  "allow_rebase_merge": true,
+  "allow_auto_merge": false,
+  "delete_branch_on_merge": true,
+  "topics": [
+    "codex", "agents", "multi-agent", "orchestration", "code-review",
+    "automation", "embedded", "cli"
+  ]
+}

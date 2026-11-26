@@ -1,0 +1,8 @@
+# Pin every text file to LF so a Windows checkout is byte-identical to a
+# Linux one, and so Git never reports whole files as changed.
+* text eol=lf
+
+# Binary blobs are not text: never touch them.
+*.png  binary
+*.gz   binary
+*.tgz  binary

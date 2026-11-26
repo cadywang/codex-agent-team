@@ -1,0 +1,46 @@
+name: 缺陷报告（Bug report）
+description: 编排、闸门或落盘行为不符合预期
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交前请先看 `ARCHITECTURE.md`。**不要**粘贴 token、内网地址或客户资料。
+  - type: input
+    id: version
+    attributes:
+      label: codex --version
+      placeholder: codex-cli 0.172.0
+    validations:
+      required: true
+  - type: input
+    id: run-id
+    attributes:
+      label: run id
+      description: runs/ 下的目录名（如 20261126T011500Z-fix-flaky-test）
+  - type: dropdown
+    id: role
+    attributes:
+      label: 出问题的角色
+      options: [research, coding, review, debug, test, flash, 非角色（编排器/CLI/CI）]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 现象
+      description: 实际发生了什么，期望什么
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 命令、任务文件内容（脱敏后）、相关阶段的 prompt.md / last-message.md 片段
+      render: shell
+  - type: textarea
+    id: manifest
+    attributes:
+      label: manifest.json 片段
+      description: 去掉绝对路径中的用户名后粘贴
+      render: json

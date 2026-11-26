@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: Hygiene (encoding, line endings, syntax)
+    runs-on: ubuntu-latest
+    steps:
+      # The commit style gate walks the pull request range, so it needs real
+      # history; the default depth 1 clone cannot resolve base..head.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reject UTF-8 BOM
+        run: |
+          bad=0
+          while IFS= read -r -d '' f; do
+            if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" = "efbbbf" ]; then
+              echo "::error file=$f::has UTF-8 BOM"; bad=1
+            fi
+          done < <(find . -path ./.git -prune -o -type f \( -name '*.py' -o -name '*.sh' -o -name '*.md' -o -name '*.yml' -o -name '*.json' \) -print0)
+          exit "$bad"
+
+      - name: Reject CRLF in sh / py / yml
+        run: |
+          bad=0
+          for pat in '*.sh' '*.py' '*.yml'; do
+            while IFS= read -r -d '' f; do
+              if LC_ALL=C grep -q "$(printf '\r')" "$f"; then
+                echo "::error file=$f::CRLF line ending"; bad=1
+              fi
+            done < <(find . -path ./.git -prune -o -type f -name "$pat" -print0)
+          done
+          exit "$bad"
+
+      - name: Python syntax
+        run: python3 -m compileall -q harness tests tools
+
+      - name: Shell syntax
+        run: |
+          for f in $(git ls-files '*.sh'); do
+            bash -n "$f" && echo "bash -n OK: $f"
+          done
+
+      - name: YAML sanity (no tabs)
+        run: |
+          for f in $(git ls-files '*.yml' '*.yaml'); do
+            if grep -Pn '\t' "$f" > /dev/null; then echo "::error file=$f::tab character in YAML"; exit 1; fi
+          done
+          echo "yaml sanity OK"
+
+      - name: Commit style self-test
+        run: python3 tests/test_check_commits.py
+
+      - name: Pull request gate self-test
+        run: python3 tests/test_check_pr.py
+
+      - name: Commit style (Linux kernel guidelines + DCO)
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python3 tools/check-commits.py --github-env --skip-bots
+          else
+            before="${{ github.event.before }}"
+            if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ]; then
+              python3 tools/check-commits.py --range "${before}..${GITHUB_SHA}" --skip-bots
+            else
+              python3 tools/check-commits.py --skip-bots
+            fi
+          fi
+
+      - name: YAML parse
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pyyaml
+          python3 -c "import glob,yaml; files=glob.glob('.github/**/*.yml',recursive=True)+glob.glob('.github/**/*.yaml',recursive=True); [list(yaml.safe_load_all(open(f,encoding='utf-8'))) for f in files]; print('yaml parsed:', len(files))"
+
+  harness:
+    name: Harness tests (python)
+    needs: hygiene
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      PYTHONPATH: harness
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      # The role catalogue and the schema files are the contract between the
+      # prompts and the orchestrator, so load them before running anything.
+      - name: Role catalogue
+        run: python -m agentteam roles
+
+      - name: Orchestrator self-tests
+        run: |
+          python tests/test_roles.py
+          python tests/test_codex.py
+          python tests/test_verdict.py
+          python tests/test_pipeline.py
+
+      - name: Dry run of the example task
+        # Proves the orchestration can be inspected without a model: no
+        # network, no codex, no writes outside the throwaway out directory.
+        run: python -m agentteam run --task examples/task.example.md --repo . --out .tmp-dryrun --dry-run
