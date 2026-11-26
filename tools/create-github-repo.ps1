@@ -90,6 +90,17 @@ try {
     }
   }
 
+  function Invoke-Git([string[]]$Arguments) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+      $output = & git @Arguments 2>&1
+      return @{ code = $LASTEXITCODE; output = (($output | ForEach-Object { "$_" }) -join "`n") }
+    } finally {
+      $ErrorActionPreference = $previous
+    }
+  }
+
   # ---- 0. sanity: local git repo with at least one commit ----
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw 'git not found on PATH' }
   & git rev-parse --is-inside-work-tree *> $null
@@ -195,11 +206,16 @@ try {
   Write-Host '==> push'
   $remoteUrl = "git@github.com:$Owner/$Repo.git"
   if (-not $DryRun) {
-    $has = (& git remote get-url origin 2>$null)
-    if ($LASTEXITCODE -ne 0) { & git remote add origin $remoteUrl } else { & git remote set-url origin $remoteUrl }
-    & git branch -M $BaseBranch
-    & git push --quiet -u origin $BaseBranch
-    if ($LASTEXITCODE -ne 0) {
+    $remotes = @(Invoke-Git @('remote')).output -split "`n"
+    if ($remotes -contains 'origin') {
+      Invoke-Git @('remote', 'set-url', 'origin', $remoteUrl) | Out-Null
+    } else {
+      Invoke-Git @('remote', 'add', 'origin', $remoteUrl) | Out-Null
+    }
+    Invoke-Git @('branch', '-M', $BaseBranch) | Out-Null
+    $pushed = Invoke-Git @('push', '--quiet', '-u', 'origin', $BaseBranch)
+    if ($pushed.code -ne 0) {
+      Write-Host $pushed.output
       Write-Host '  The push was rejected. Two usual causes:'
       Write-Host '    - the local SSH key is not the owner account (git@github.com auth),'
       Write-Host '    - or the repository was created WITH an initial commit (README /'
@@ -209,7 +225,7 @@ try {
       Write-Host '      git push -u origin main'
       throw 'git push failed'
     }
-    & git push --quiet --tags
+    Invoke-Git @('push', '--quiet', '--tags') | Out-Null
     Write-Host "    pushed $BaseBranch (+tags) over SSH"
   } else { Write-Host "[dry-run] git remote set-url origin $remoteUrl && git push -u origin $BaseBranch --tags" }
 
@@ -249,8 +265,9 @@ try {
 
   # ---- 4. optional release ----
   if ($Release) {
-    $ver = (& git describe --tags --abbrev=0 2>$null)
-    if ($LASTEXITCODE -eq 0 -and $ver) {
+    $described = Invoke-Git @('describe', '--tags', '--abbrev=0')
+    $ver = if ($described.code -eq 0) { $described.output.Trim() } else { '' }
+    if ($ver) {
       Write-Host "==> release $ver"
       Invoke-Gh 'POST' "$api/repos/$Owner/$Repo/releases" @{
         tag_name = $ver; name = $ver; generate_release_notes = $true; draft = $false; prerelease = $false
