@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "roles": [
+    {
+      "id": "research",
+      "name": "Research",
+      "description": "Map the codebase, find the relevant files and produce an executable plan with risks.",
+      "prompt": "research.md",
+      "sandbox": "read-only",
+      "writes": false,
+      "timeout_seconds": 900,
+      "output_schema": "research.schema.json"
+    },
+    {
+      "id": "coding",
+      "name": "Coding",
+      "description": "Implement the plan as the smallest coherent diff, then explain what changed.",
+      "prompt": "coding.md",
+      "sandbox": "workspace-write",
+      "writes": true,
+      "timeout_seconds": 1800
+    },
+    {
+      "id": "review",
+      "name": "Coding Review",
+      "description": "Review the working-tree diff without editing anything, and return a gate verdict.",
+      "prompt": "review.md",
+      "sandbox": "read-only",
+      "writes": false,
+      "gate": true,
+      "timeout_seconds": 900,
+      "output_schema": "verdict.schema.json"
+    },
+    {
+      "id": "debug",
+      "name": "Debug",
+      "description": "Find the root cause of a failed gate and fix it, then say what the real cause was.",
+      "prompt": "debug.md",
+      "sandbox": "workspace-write",
+      "writes": true,
+      "timeout_seconds": 1800
+    },
+    {
+      "id": "test",
+      "name": "Test",
+      "description": "Run the repository's own checks and report the result as a gate verdict.",
+      "prompt": "test.md",
+      "sandbox": "workspace-write",
+      "writes": true,
+      "gate": true,
+      "timeout_seconds": 1800,
+      "output_schema": "verdict.schema.json"
+    },
+    {
+      "id": "flash",
+      "name": "Flash",
+      "description": "Produce a firmware flashing plan for an embedded target. Never executes it.",
+      "prompt": "flash.md",
+      "sandbox": "read-only",
+      "writes": false,
+      "timeout_seconds": 600,
+      "output_schema": "flash.schema.json",
+      "requires_flag": "allow-flash"
+    }
+  ]
+}
