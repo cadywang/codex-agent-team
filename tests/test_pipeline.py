@@ -8,6 +8,7 @@ import io
 import json
 import os
 import pathlib
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -100,8 +101,12 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("--sandbox read-only", command)
         # codex runs with --cd <workdir>, so every path it is given must be
         # absolute or it will write somewhere else than this harness reads.
+        # Read it the way a shell would: shlex.quote leaves a plain POSIX
+        # path unquoted, so splitting on a quote character only worked on
+        # Windows, where the path always contains a backslash.
+        argv = shlex.split(command)
         for argument in ("-o", "--output-schema"):
-            value = command.split(argument, 1)[1].split("'")[1]
+            value = argv[argv.index(argument) + 1]
             self.assertTrue(os.path.isabs(value), "%s %s" % (argument, value))
         self.assertTrue((run / "task.md").is_file())
 
