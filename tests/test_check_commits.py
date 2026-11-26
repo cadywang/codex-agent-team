@@ -21,15 +21,28 @@ SIGNOFF = "Signed-off-by: cadywang <cadywang@users.noreply.github.com>"
 
 
 class CommitMessageTests(unittest.TestCase):
-    def check(self, message: str, strict_dco: bool = True):
+    def check(self, message: str, strict_dco: bool = True, identity: bool = False):
+        """Run the checker on a message file.
+
+        ``identity=True`` pins GIT_AUTHOR_* to the address the sign-off
+        fixtures use, so the DCO comparison is exercised on a runner that has
+        no git identity configured at all.
+        """
         with tempfile.TemporaryDirectory() as tmp:
             path = pathlib.Path(tmp) / "COMMIT_EDITMSG"
             path.write_text(message, encoding="utf-8")
             argv = [sys.executable, str(CHECKER), "--commit-msg-file", str(path)]
             if strict_dco:
                 argv.append("--strict-dco")
+            env = dict(os.environ)
+            if identity:
+                env["GIT_AUTHOR_NAME"] = "cadywang"
+                env["GIT_AUTHOR_EMAIL"] = "cadywang@users.noreply.github.com"
+                env["GIT_CONFIG_GLOBAL"] = os.devnull
+                env["GIT_CONFIG_SYSTEM"] = os.devnull
             return subprocess.run(argv, cwd=str(ROOT), capture_output=True,
-                                  text=True, encoding="utf-8", errors="replace")
+                                  text=True, encoding="utf-8", errors="replace",
+                                  env=env)
 
     def assert_ok(self, message: str):
         result = self.check(message)
@@ -89,10 +102,11 @@ class CommitMessageTests(unittest.TestCase):
         self.assert_rejected("harness: add the debug gate\n", "Signed-off-by")
 
     def test_signoff_must_match_the_author(self):
-        self.assert_rejected(
-            "harness: add the debug gate\n\n"
-            "Signed-off-by: someone else <else@example.com>\n",
-            "must match the author")
+        message = ("harness: add the debug gate\n\n"
+                   "Signed-off-by: someone else <else@example.com>\n")
+        result = self.check(message, identity=True)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("must match the author", result.stdout + result.stderr)
 
     def test_long_body_line_is_rejected(self):
         self.assert_rejected(
