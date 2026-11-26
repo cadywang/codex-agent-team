@@ -138,6 +138,18 @@ try {
       Write-Host '          continuing - settings are cosmetic, the push and the branch rules are not'
     }
   } else {
+    # POST /users/{owner}/repos does not exist (it answers 404). A repository
+    # is created for the authenticated account with POST /user/repos, and for
+    # an organisation with POST /orgs/{owner}/repos.
+    $me = $null
+    if (-not $DryRun) { $me = Invoke-Gh 'GET' "$api/user" $null }
+    $login = if ($me) { $me.login } else { '' }
+    $createUri = if ($login -and $login -ne $Owner) {
+      "$api/orgs/$Owner/repos"
+    } else {
+      "$api/user/repos"
+    }
+
     $create = @{
       name               = $Repo
       description        = $settings.description
@@ -153,7 +165,17 @@ try {
       allow_rebase_merge = [bool]$settings.allow_rebase_merge
       delete_branch_on_merge = [bool]$settings.delete_branch_on_merge
     }
-    Invoke-Gh 'POST' "$api/users/$Owner/repos" ($create + $mergeFields) | Out-Null
+    try {
+      Invoke-Gh 'POST' $createUri ($create + $mergeFields) | Out-Null
+    } catch {
+      Write-Host ''
+      Write-Host '  The repository could not be created with this token.'
+      Write-Host '  Some fine-grained tokens are not allowed to create repositories at all.'
+      Write-Host '  In that case: create it once at https://github.com/new and leave it'
+      Write-Host '  EMPTY (no README, no .gitignore, no licence), then re-run this script.'
+      Write-Host '  It will detect the existing repository, push, and protect main.'
+      throw
+    }
     Write-Host "    created $Owner/$Repo"
   }
 
