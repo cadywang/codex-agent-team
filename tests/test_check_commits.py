@@ -7,6 +7,7 @@ identically on every platform.
 
 from __future__ import annotations
 
+import os
 import pathlib
 import subprocess
 import sys
@@ -104,6 +105,37 @@ class CommitMessageTests(unittest.TestCase):
             "malformed Fixes")
 
 
+
+
+class NoIdentityTests(unittest.TestCase):
+    """A GitHub runner has no git identity; the message must still be judged."""
+
+    def run_without_identity(self, message):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            subprocess.run(["git", "init", "-q"], cwd=str(repo), check=True)
+            path = repo / "COMMIT_EDITMSG"
+            path.write_text(message, encoding="utf-8")
+            env = dict(os.environ)
+            env["GIT_CONFIG_GLOBAL"] = os.devnull
+            env["GIT_CONFIG_SYSTEM"] = os.devnull
+            for key in ("GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL"):
+                env.pop(key, None)
+            return subprocess.run(
+                [sys.executable, str(CHECKER), "--commit-msg-file", str(path),
+                 "--strict-dco"],
+                cwd=str(repo), capture_output=True, text=True, encoding="utf-8",
+                errors="replace", env=env)
+
+    def test_good_message_passes_without_an_identity(self):
+        result = self.run_without_identity(
+            "harness: add the debug gate\n\n" + SIGNOFF + "\n")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_bad_subject_is_still_rejected_without_an_identity(self):
+        result = self.run_without_identity("feat: add the debug gate\n\n" + SIGNOFF + "\n")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("conventional-commit", result.stdout + result.stderr)
 
 class GitHookTests(unittest.TestCase):
     """The hooks are the local half of the same rules."""
