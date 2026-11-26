@@ -4,9 +4,9 @@
     Configure a clone for contributing (Windows counterpart of dev-setup.sh).
 
 .DESCRIPTION
-    Turns on the two conventions this repository is maintained with:
-      * format.signOff  -> every commit carries Signed-off-by: (DCO)
-      * core.hooksPath  -> tools/git-hooks/commit-msg validates the message
+    Turns on the conventions this repository is maintained with:
+      * core.hooksPath     -> tools/git-hooks validates every commit message
+      * prepare-commit-msg -> appends Signed-off-by: (DCO) when it is missing
     then runs the checker over the current history as a smoke test.
 
 .EXAMPLE
@@ -24,8 +24,8 @@ try {
   & git config format.signOff true
   & git config core.hooksPath tools/git-hooks
 
-  Write-Host ("format.signOff  = " + (& git config --get format.signOff))
   Write-Host ("core.hooksPath  = " + (& git config --get core.hooksPath))
+  Write-Host 'hooks           = commit-msg, prepare-commit-msg'
 
   $py = $null
   foreach ($c in @('python3', 'python', 'py')) {

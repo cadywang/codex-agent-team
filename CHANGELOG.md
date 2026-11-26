@@ -16,4 +16,5 @@
 - `flash` 角色默认只产出计划，需要 `--allow-flash` 才会进入流水线，且从不执行烧录。
 - 离线自测：`tests/fake_codex.py` 假 CLI + 角色/命令构造/结论解析/流水线四组用例。
 - 仓库治理：内核风格提交门禁（含 DCO）、PR 标题与合并清单门禁、分支保护配置、
-  建仓脚本与本地钩子。
+  建仓脚本与本地钩子。`prepare-commit-msg` 负责补 DCO 签名，因为
+  `format.signOff` 在 git 2.55 上实测不生效。

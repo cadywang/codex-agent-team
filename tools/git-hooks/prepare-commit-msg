@@ -1,0 +1,30 @@
+#!/bin/sh
+# Guarantee the DCO trailer, independent of the git version.
+#
+# `format.signOff` is documented to add Signed-off-by automatically, but its
+# behaviour differs between git builds (git 2.55 on Windows ignores it), so the
+# trailer is appended here instead. `git commit -s` still works and is checked
+# by the commit-msg hook; this only fills the gap when nobody passed -s.
+#
+# Install once with:  git config core.hooksPath tools/git-hooks
+#                     (tools/dev-setup.sh does this for you)
+set -e
+
+MSG="$1"
+[ -n "$MSG" ] && [ -f "$MSG" ] || exit 0
+
+NAME=$(git config user.name || true)
+EMAIL=$(git config user.email || true)
+[ -n "$NAME" ] && [ -n "$EMAIL" ] || exit 0
+
+# Already signed off (any identity) -> nothing to do.
+if grep -qi '^Signed-off-by:' "$MSG" 2>/dev/null; then
+    exit 0
+fi
+
+# A message that is still empty (editor not filled in yet) is left alone.
+if ! grep -q '[^[:space:]]' "$MSG" 2>/dev/null; then
+    exit 0
+fi
+
+printf '\nSigned-off-by: %s <%s>\n' "$NAME" "$EMAIL" >> "$MSG"

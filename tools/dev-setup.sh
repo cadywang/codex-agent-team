@@ -2,9 +2,9 @@
 # ---------------------------------------------------------------------------
 #  dev-setup.sh -- configure a clone for contributing.
 #
-#  Turns on the two conventions this repository is maintained with:
-#    * format.signOff   -> every commit carries Signed-off-by: (DCO)
-#    * core.hooksPath   -> tools/git-hooks/commit-msg validates the message
+#  Turns on the conventions this repository is maintained with:
+#    * core.hooksPath     -> tools/git-hooks validates every commit message
+#    * prepare-commit-msg -> appends Signed-off-by: (DCO) when it is missing
 #  then runs the checker over the current history as a smoke test.
 #
 #  Usage:  bash tools/dev-setup.sh
@@ -19,10 +19,10 @@ fi
 
 git config format.signOff true
 git config core.hooksPath tools/git-hooks
-chmod +x tools/git-hooks/commit-msg 2>/dev/null || true
+chmod +x tools/git-hooks/commit-msg tools/git-hooks/prepare-commit-msg 2>/dev/null || true
 
-echo "format.signOff  = $(git config --get format.signOff)"
 echo "core.hooksPath  = $(git config --get core.hooksPath)"
+echo "hooks           = commit-msg, prepare-commit-msg"
 
 PY="$(command -v python3 || command -v python || true)"
 if [ -n "$PY" ]; then

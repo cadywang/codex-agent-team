@@ -104,5 +104,45 @@ class CommitMessageTests(unittest.TestCase):
             "malformed Fixes")
 
 
+
+class GitHookTests(unittest.TestCase):
+    """The hooks are the local half of the same rules."""
+
+    def run_git(self, repo, *args):
+        return subprocess.run(["git"] + list(args), cwd=str(repo), capture_output=True,
+                              text=True, encoding="utf-8", errors="replace")
+
+    def make_repo(self, tmp):
+        repo = pathlib.Path(tmp)
+        self.run_git(repo, "init", "-q", "-b", "main")
+        self.run_git(repo, "config", "user.name", "cadywang")
+        self.run_git(repo, "config", "user.email",
+                     "cadywang@users.noreply.github.com")
+        self.run_git(repo, "config", "core.hooksPath",
+                     str(ROOT / "tools" / "git-hooks"))
+        (repo / "a.txt").write_text("x\n", encoding="utf-8")
+        self.run_git(repo, "add", "-A")
+        return repo
+
+    def commit(self, repo, message):
+        path = repo / "msg.txt"
+        path.write_text(message, encoding="utf-8")
+        return self.run_git(repo, "commit", "-F", str(path))
+
+    def test_prepare_commit_msg_adds_the_trailer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self.make_repo(tmp)
+            result = self.commit(repo, "tools: add the hook\n\nBody text.\n")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            body = self.run_git(repo, "log", "-1", "--format=%B").stdout
+            self.assertIn("Signed-off-by: cadywang <cadywang@users.noreply.github.com>", body)
+
+    def test_commit_msg_hook_rejects_a_bad_subject(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self.make_repo(tmp)
+            result = self.commit(repo, "Added the hook\n\nBody text.\n")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("commit message does not follow", result.stdout + result.stderr)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
