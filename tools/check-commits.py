@@ -233,7 +233,8 @@ def check_one(c: dict, args) -> list:
     sigs = re.findall(r'^Signed-off-by:\s*(.+)$', body, re.M)
     if not sigs:
         errs.append('missing "Signed-off-by:" (DCO); use "git commit -s"')
-    elif not any(_same_identity(c['name'], c['email'], s) for s in sigs):
+    elif c['name'] and c['email'] and not any(
+            _same_identity(c['name'], c['email'], s) for s in sigs):
         want = '%s <%s>' % (c['name'], c['email'])
         errs.append('Signed-off-by must match the author: %s' % want)
     return errs
@@ -314,8 +315,17 @@ def main() -> int:
         if not subject.strip() or is_mergeish(subject):
             print('check-commits: skipped')
             return 0
-        name = run('git', 'config', 'user.name').strip()
-        email = run('git', 'config', 'user.email').strip()
+        # A CI runner has no git identity at all, and a fresh machine may not
+        # either; missing identity is not a reason to refuse to read a message.
+        # Fall back to the author environment, then to "unknown".
+        name = run('git', 'config', 'user.name', required=False)
+        email = run('git', 'config', 'user.email', required=False)
+        if name is None:
+            name = os.environ.get('GIT_AUTHOR_NAME', '')
+        if email is None:
+            email = os.environ.get('GIT_AUTHOR_EMAIL', '')
+        name = (name or '').strip()
+        email = (email or '').strip()
         c = {'sha': '', 'short': 'working tree', 'name': name, 'email': email,
              'subject': subject, 'body': body}
         errs = check_one(c, args)
