@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Flash plan",
+  "description": "Final message of the flash stage. A plan for a human to execute; the orchestrator never runs it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["device", "preconditions", "commands", "verification", "rollback", "warnings"],
+  "properties": {
+    "device": { "type": "string" },
+    "preconditions": { "type": "array", "items": { "type": "string" } },
+    "commands": { "type": "array", "items": { "type": "string" } },
+    "verification": { "type": "array", "items": { "type": "string" } },
+    "rollback": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

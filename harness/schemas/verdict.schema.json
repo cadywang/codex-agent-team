@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gate verdict",
+  "description": "Final message of the review and test stages. Every property is required and closed, so it can be used as a strict structured-output schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "summary", "findings", "checks"],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "fail"],
+      "description": "pass only when nothing must be fixed before merging"
+    },
+    "summary": {
+      "type": "string",
+      "description": "one sentence a human can act on"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "file", "line", "issue", "suggestion"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["blocker", "major", "minor", "nit"]
+          },
+          "file": { "type": "string" },
+          "line": { "type": ["integer", "null"] },
+          "issue": { "type": "string" },
+          "suggestion": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "commands or inspections that support the verdict"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Research plan",
+  "description": "Final message of the research stage: a plan the coding stage can execute.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["goal", "relevant_paths", "steps", "risks", "verification"],
+  "properties": {
+    "goal": {
+      "type": "string",
+      "description": "one sentence describing the change"
+    },
+    "relevant_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "rationale"],
+        "properties": {
+          "action": { "type": "string" },
+          "rationale": { "type": "string" }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "verification": {
+      "type": "string",
+      "description": "commands that would prove the change works"
+    }
+  }
+}
